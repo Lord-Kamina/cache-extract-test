@@ -1,0 +1,63 @@
+name: Test cache
+
+# Controls when the workflow will run
+on:
+  push:
+    branches:
+      - master
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+  packages: write
+  pull-requests: write
+  security-events: write
+  statuses: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  Test:
+    name: Test how cache behaves with existing archives
+    runs-on: [ macos-latest ]
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+
+      - name: check tree before restore
+        run: find ${{ github.workspace }}
+        shell: bash
+
+      - name: Try to restore cache
+        id: restore_cache
+        uses: Lord-Kamina/always-upload-cache/restore@refresh-cache
+        with:
+          path: ${{ github.workspace }}/copied_books
+          key: 842ED006-B62E-4414-8414-B849B76DC9BC
+
+      - name: check tree after restore
+        run: find ${{ github.workspace }}
+        shell: bash
+
+      - name: copy books
+        run: |
+          if [[ "${{ steps.restore_cache.outputs.cache-hit }}" != "true" ]]; then
+             cp -Rvf ${{ github.workspace }}/books ${{ github.workspace }}/copied_books
+          fi
+        shell: bash
+
+      - name: check tree after copying
+        run: find ${{ github.workspace }}
+        shell: bash
+
+      - name: Try to save cache
+        id: save_cache
+        uses: Lord-Kamina/always-upload-cache/save@refresh-cache
+        with:
+          path: ${{ github.workspace }}/copied_books
+          key: 842ED006-B62E-4414-8414-B849B76DC9BC
+          refresh-cache: true
